@@ -13,7 +13,7 @@ import { VideoDataContext } from "../../_context/VideoDataContext";
 import { db } from "../../../configs/db";
 import { useUser } from "@clerk/nextjs";
 import { VideoData } from "../../../configs/schema";
-import PlayerDialog from './../_components/PlayerDialog';
+import PlayerDialog from "./../_components/PlayerDialog";
 
 const CreateNew = () => {
   const [formData, setFormData] = useState([]);
@@ -22,11 +22,10 @@ const CreateNew = () => {
   const [audioFileUrl, setAudioFileUrl] = useState();
   const [captions, setCaptions] = useState();
   const [imageList, setImageList] = useState([]);
-  const {videoData,setVideoData} = useContext(VideoDataContext);
+  const { videoData, setVideoData } = useContext(VideoDataContext);
   const [playVideo, setPlayVideo] = useState(true);
-  const [videoId,setVideoId] = useState(1);
-  const {user} = useUser();
-
+  const [videoId, setVideoId] = useState(1);
+  const { user } = useUser();
 
   const onHandleInputChange = (fieldName, fieldValue) => {
     console.log(fieldName, fieldValue);
@@ -50,7 +49,7 @@ const CreateNew = () => {
       return false;
     }
     return true;
-  }
+  };
 
   //get video script
   const GetVideoScript = async () => {
@@ -63,25 +62,23 @@ const CreateNew = () => {
     const prompt = `write a script to generate ${formData.duration} video on toppic :${formData.toppic} along with AI images prompt in ${formData.style} format for each scene and give me result in JSON format with imagePrompt and ContextText as field`;
     // console.log(prompt);
     const result = await axios.post("/api/get-video-script", {
-        prompt: prompt,
+      prompt: prompt,
     });
-    if(result.status === 200){
+    if (result.status === 200) {
       console.log("video-script", result.data.result.video_script);
-      if(result.data.result.video_script){
+      if (result.data.result.video_script) {
         setVideoScript(result.data.result.video_script);
         GenerateAudioFile(result.data.result.video_script);
-        setVideoData(prev => ({
+        setVideoData((prev) => ({
           ...prev,
-          'videoScript': result.data.result.video_script
-        }))
+          videoScript: result.data.result.video_script,
+        }));
         // setLoading(false);
-      }
-      else{
+      } else {
         alert("something went wrong");
         setLoading(false);
       }
-    }
-    else{
+    } else {
       alert("Internal server error");
       setLoading(false);
     }
@@ -99,22 +96,21 @@ const CreateNew = () => {
       console.log("audioScript", script);
 
       const result = await axios.post("/api/generate-audio", {
-          // text: scrpt,
-          text: script,
-          id: id,
-        })
-      console.log("generate-audio-file-result",result);
-      if(result.status === 200 && result.data.result){
+        // text: scrpt,
+        text: script,
+        id: id,
+      });
+      console.log("generate-audio-file-result", result);
+      if (result.status === 200 && result.data.result) {
         console.log("audio-file-url", result.data.result);
         setAudioFileUrl(result.data.result);
-        GenerateAudioCaption(result.data.result,videoScriptData);
-        setVideoData(prev => ({
+        GenerateAudioCaption(result.data.result, videoScriptData);
+        setVideoData((prev) => ({
           ...prev,
-          'audioFileUrl': result.data.result
-        }))
+          audioFileUrl: result.data.result,
+        }));
         // setLoading(false);
-      }
-      else{
+      } else {
         alert("something went wrong");
         setLoading(false);
       }
@@ -124,26 +120,24 @@ const CreateNew = () => {
     }
   };
 
-  const GenerateAudioCaption = async (fileUrl,videoScriptData) => {
+  const GenerateAudioCaption = async (fileUrl, videoScriptData) => {
     setLoading(true);
     console.log("generating audio caption");
     // console.log("audio-file-url", fileUrl);
-    const result = await axios
-      .post("/api/generate-caption", {
-        audioFileUrl: fileUrl,
-      })
-    console.log("caption-result",result);
-    if(result && result.status === 200 && result.data.result){
+    const result = await axios.post("/api/generate-caption", {
+      audioFileUrl: fileUrl,
+    });
+    console.log("caption-result", result);
+    if (result && result.status === 200 && result.data.result) {
       // console.log("caption-result", result.data.result);
-      setVideoData(prev => ({
+      setVideoData((prev) => ({
         ...prev,
-        'captions': result.data.result
-      }))
+        captions: result.data.result,
+      }));
       setCaptions(result.data.result);
       GenerateImage(videoScriptData);
       // setLoading(false);
-    }
-    else{
+    } else {
       setLoading(false);
       alert("something went wrong");
     }
@@ -164,43 +158,45 @@ const CreateNew = () => {
     // setImageUrl(url); // Works in the clients
     // console.log("image-generated", images);
     // console.log(images,videoScript,audioFileUrl,captions);
-    setVideoData(prev => ({
+    setVideoData((prev) => ({
       ...prev,
-      'imageList': images
-    }))
+      imageList: images,
+    }));
     setImageList(images);
     setLoading(false);
     console.log("everything generated");
   };
 
   useEffect(() => {
-    console.log("videoData",videoData);
-    if(Object.keys(videoData).length === 4){
+    // console.log("videoData",videoData);
+    if (Object.keys(videoData).length === 4) {
       SaveVideoData(videoData);
     }
-  },[videoData])
+  }, [videoData]);
 
-  const SaveVideoData = async(Video) => {
+  const SaveVideoData = async (Video) => {
     setLoading(true);
 
-    try{
-      const result = await db.insert(VideoData).values({
-        script: Video.videoScript,
-        audioFileUrl: Video.audioFileUrl,
-        captions: Video.captions,
-        imageList: Video.imageList,
-        createdBy: user?.primaryEmailAddress?.emailAddress
-      }).returning({id: VideoData?.id});
+    try {
+      const result = await db
+        .insert(VideoData)
+        .values({
+          script: Video.videoScript,
+          audioFileUrl: Video.audioFileUrl,
+          captions: Video.captions,
+          imageList: Video.imageList,
+          createdBy: user?.primaryEmailAddress?.emailAddress,
+        })
+        .returning({ id: VideoData?.id });
       setVideoData(result[0].id);
       setPlayVideo(true);
       console.log(result);
       setLoading(false);
-    }
-    catch(err){
+    } catch (err) {
       console.log(err);
       setLoading(false);
     }
-  }
+  };
 
   const onCreateClickHandler = () => {
     try {
@@ -224,7 +220,11 @@ const CreateNew = () => {
         </Button>
       </div>
       <CustomLoading loading={loading} />
-      <PlayerDialog playVideo={playVideo} videoId={videoId}/>
+      <PlayerDialog
+        playVideo={playVideo}
+        videoId={videoId}
+        setPlayVideo={setPlayVideo}
+      />
     </div>
   );
 };
