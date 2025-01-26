@@ -12,8 +12,11 @@ import Image from "next/image";
 import { VideoDataContext } from "../../_context/VideoDataContext";
 import { db } from "../../../configs/db";
 import { useUser } from "@clerk/nextjs";
-import { VideoData } from "../../../configs/schema";
+import { Users, VideoData } from "../../../configs/schema";
 import PlayerDialog from "./../_components/PlayerDialog";
+import { UserDetailContext } from "../../_context/UserDetailContext";
+import { toast } from "sonner";
+import { eq } from "drizzle-orm";
 
 const CreateNew = () => {
   const [formData, setFormData] = useState([]);
@@ -26,6 +29,7 @@ const CreateNew = () => {
   const [playVideo, setPlayVideo] = useState(true);
   const [videoId, setVideoId] = useState(1);
   const { user } = useUser();
+  const { userDetail, setUserDetail } = useContext(UserDetailContext);
 
   const onHandleInputChange = (fieldName, fieldValue) => {
     console.log(fieldName, fieldValue);
@@ -190,7 +194,8 @@ const CreateNew = () => {
         .returning({ id: VideoData?.id });
       setVideoData(result[0].id);
       setPlayVideo(true);
-      console.log(result);
+      await UpdateUserCredits();
+      // console.log(result);
       setLoading(false);
     } catch (err) {
       console.log(err);
@@ -198,8 +203,28 @@ const CreateNew = () => {
     }
   };
 
+  const UpdateUserCredits = async () => {
+    const result = await db
+      .update(Users)
+      .set({
+        credits: userDetail?.credits - 10,
+      })
+      .where(eq(Users.email, user?.user?.primaryEmailAddress?.emailAddress));
+    console.log(result);
+    setUserDetail((prev) => ({
+      ...prev,
+      credits: userDetail?.credits - 10,
+    }));
+
+    setVideoData(null);
+  };
+
   const onCreateClickHandler = () => {
     try {
+      if (!userDetail?.credits >= 0) {
+        toast("You don't have enough credits to create video");
+        return;
+      }
       GetVideoScript();
     } catch (err) {
       console.log(err);
